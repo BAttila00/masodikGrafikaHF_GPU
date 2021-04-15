@@ -83,7 +83,7 @@ const char* fragmentSource = R"(
 					break;
 				}
 				if (dot(n, intersect - p11) > -0.15f && dot(n, intersect - p11) <= 0.0f) {
-					hit.mat = 2;
+					hit.mat = 0;
 					closeToEdge = true;
 				}
 			}
@@ -98,12 +98,38 @@ const char* fragmentSource = R"(
 		return hit;
 	}
 
+	Hit intersectSphere(float radius, vec3 center, Ray ray, int material) {		//a kapott sugár hol metszi el ezt a gömböt
+		Hit hit;
+		hit.t = -1;
+		vec3 dist = ray.start - center;
+		float a = dot(ray.dir, ray.dir);
+		float b = dot(dist, ray.dir) * 2;
+		float c = dot(dist, dist) - radius * radius;
+		float discr = b * b - 4 * a * c;
+		if (discr < 0) return hit;
+		float sqrt_discr = sqrt(discr);
+		float t1 = (-b + sqrt_discr) / 2 / a;
+		float t2 = (-b - sqrt_discr) / 2 / a;
+		if (t1 <= 0) return hit; // t1 >= t2 for sure
+		hit.t = (t2 > 0) ? t2 : t1;
+		hit.position = ray.start + ray.dir * hit.t;
+		hit.normal = (hit.position - center) / radius;		//gömb esetén így számíthatjuk ki a normálvektort adott pontban (de csak gömbnél)
+		hit.mat = material;
+		return hit;
+	}
+
 	Hit firstIntersect(Ray ray) {
 		Hit bestHit;
+		Hit tempHit;
 		bestHit.t = -1;
-		bestHit = intersectConvexPolyhedron(ray, bestHit, 0.06f, 2);
+		tempHit.t = -1;
+		
+		//bestHit = intersectConvexPolyhedron(ray, bestHit, 0.06f, 2);
 		//bestHit = intersectConvexPolyhedron(ray, bestHit, 1.0f, 2);
 		bestHit = intersectConvexPolyhedron(ray, bestHit, 1.2f, 3);
+
+		tempHit = intersectSphere(0.2f, vec3(0.0f, 0.0f, 0.0f), ray, 2);
+		if (tempHit.t > 0.0f && (bestHit.t < 0.0f || tempHit.t < bestHit.t))  bestHit = tempHit;
 
 		if (dot(ray.dir, bestHit.normal) > 0) bestHit.normal = bestHit.normal * (-1);
 		return bestHit;
@@ -152,7 +178,6 @@ const char* fragmentSource = R"(
 
 	in  vec3 p;
 	out vec4 fragmentColor;
-
 
 	void main() {
 		Ray ray;
