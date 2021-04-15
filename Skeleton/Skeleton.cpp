@@ -52,7 +52,7 @@ const char* fragmentSource = R"(
 	uniform vec3 wEye;
 	uniform vec3 v[20];
 	uniform int planes[objFaces * 3];
-	uniform vec3 kd[2], ks[2], F0, F0Perfect;
+	uniform vec3 kd[2], ks[2], F0Gold, F0PerfectReflect;
 
 	void getObjPlane(int i, float scale,  out vec3 p,  out vec3 normal) {
 		vec3 p1 = v[planes[3 * i] - 1];
@@ -83,7 +83,7 @@ const char* fragmentSource = R"(
 					break;
 				}
 				if (dot(n, intersect - p11) > -0.15f && dot(n, intersect - p11) <= 0.0f) {
-					hit.mat = 0;
+					hit.mat = 0;			//ha közel vagyunk a dedokaéder éleihez akkor változtassuk a materialt 0-ásra (diffúz szürke)
 					closeToEdge = true;
 				}
 			}
@@ -162,12 +162,12 @@ const char* fragmentSource = R"(
 			}
 			//mirror reflection
 			if (hit.mat == 2) {
-				ray.weight = ray.weight * (F0 + (vec3(1, 1, 1) - F0) * pow(dot(-ray.dir, hit.normal), 5));
+				ray.weight = ray.weight * (F0Gold + (vec3(1, 1, 1) - F0Gold) * pow(dot(-ray.dir, hit.normal), 5));
 				ray.start = hit.position + hit.normal * epsilon;
 				ray.dir = reflect(ray.dir, hit.normal);
 			}
 			if (hit.mat == 3) {
-				ray.weight = ray.weight * (F0Perfect + (vec3(1, 1, 1) - F0Perfect) * pow(dot(-ray.dir, hit.normal), 5));
+				ray.weight = ray.weight * (F0PerfectReflect + (vec3(1, 1, 1) - F0PerfectReflect) * pow(dot(-ray.dir, hit.normal), 5));
 				ray.start = hit.position + hit.normal * epsilon;
 				ray.dir = reflect(ray.dir, hit.normal);
 			}
@@ -288,6 +288,7 @@ void onInitialization() {
 		shader.setUniform(planes[i], "planes[" + std::to_string(i) + "]");
 	}
 
+	//két diffúz anyagunk lesz (egy szürkés és egy sárgás) ezeknek itt adjuk meg a tulajdonságait
 	shader.setUniform(vec3(0.1f, 0.2f, 0.3f), "kd[0]");
 	shader.setUniform(vec3(1.5f, 0.6f, 0.4f), "kd[1]");
 	shader.setUniform(vec3(5, 5, 5), "ks[0]");
@@ -297,8 +298,8 @@ void onInitialization() {
 	float redFresnel = Fresnel(0.17, 3.1);
 	float greenFresnel = Fresnel(0.35, 2.7);
 	float blueFresnel = Fresnel(1.5, 1.9);
-	shader.setUniform(vec3(redFresnel, greenFresnel, blueFresnel), "F0");
-	shader.setUniform(vec3(1, 1, 1), "F0Perfect");
+	shader.setUniform(vec3(redFresnel, greenFresnel, blueFresnel), "F0Gold");
+	shader.setUniform(vec3(1, 1, 1), "F0PerfectReflect");		//tökéletes visszaverödést biztosító Fresnel mutató
 }
 
 // Window has become invalid: Redraw
