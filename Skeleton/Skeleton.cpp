@@ -63,42 +63,6 @@ const char* fragmentSource = R"(
 		p = p1 * scale + vec3(0, 0, 0.03f);
 	}
 
-	Hit solveQuadratic(float a, float b, float c, Ray ray, Hit hit, float zmin, float zmax, float normz) {
-		float discr = b * b - 4.0f * a * c;
-		if (discr >= 0) {
-			float sqrt_discr = sqrt(discr);
-			float t1 = (-b + sqrt_discr) / 2.0f / a;
-			vec3 p = ray.start + ray.dir * t1;
-			if (p.z > zmax || p.z < zmin) t1 = -1;
-			float t2 = (-b - sqrt_discr) / 2.0f / a;
-			p = ray.start + ray.dir * t2;
-			if (p.z > zmax || p.z < zmin) t2 = -1;
-			if (t2 > 0 && (t2 < t1 || t1 < 0)) t1 = t2;
-			if (t1 > 0 && (t1 < hit.t || hit.t < 0)) {
-				hit.t = t1;
-				hit.position = ray.start + ray.dir * hit.t;
-				hit.normal = normalize(vec3(-hit.position.x, -hit.position.y, normz));
-				hit.mat = 2;
-			}
-		}
-		return hit;
-	}
-
-	Hit intersectMirascope(Ray ray, Hit hit) {
-		const float f = 0.25f;
-		const float H = 0.98f * f;
-
-		float a = dot(ray.dir.xy, ray.dir.xy);
-		float b = dot(ray.dir.xy, ray.start.xy) * 2 - 4 * f * ray.dir.z;
-		float c = dot(ray.start.xy, ray.start.xy) - 4 * f * ray.start.z;
-		hit = solveQuadratic(a, b, c, ray, hit, 0, f / 2, 2 * f);
-		if (top == 0) return hit;
-		b += 8 * f * ray.dir.z;
-		c += 8 * f * ray.start.z - 4 * f * f;
-		hit = solveQuadratic(a, b, c, ray, hit, f / 2, H, -2 * f);
-		return hit;
-	}
-
 	Hit intersectConvexPolyhedron(Ray ray, Hit hit, float scale, int mat) {
 		for (int i = 0; i < objFaces; i++)
 		{
@@ -119,7 +83,7 @@ const char* fragmentSource = R"(
 					break;
 				}
 				if (dot(n, intersect - p11) > -0.15f && dot(n, intersect - p11) <= 0.0f) {
-					hit.mat = 0;
+					hit.mat = 2;
 					closeToEdge = true;
 				}
 			}
@@ -137,7 +101,6 @@ const char* fragmentSource = R"(
 	Hit firstIntersect(Ray ray) {
 		Hit bestHit;
 		bestHit.t = -1;
-		//bestHit = intersectMirascope(ray, bestHit);
 		bestHit = intersectConvexPolyhedron(ray, bestHit, 0.06f, 2);
 		//bestHit = intersectConvexPolyhedron(ray, bestHit, 1.0f, 2);
 		bestHit = intersectConvexPolyhedron(ray, bestHit, 1.2f, 3);
