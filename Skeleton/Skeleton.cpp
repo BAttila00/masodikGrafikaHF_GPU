@@ -52,7 +52,7 @@ const char* fragmentSource = R"(
 	uniform vec3 wEye;
 	uniform vec3 v[20];
 	uniform int planes[objFaces * 3];
-	uniform vec3 kd[2], ks[2], F0;
+	uniform vec3 kd[2], ks[2], F0, F0Perfect;
 
 	void getObjPlane(int i, float scale,  out vec3 p,  out vec3 normal) {
 		vec3 p1 = v[planes[3 * i] - 1];
@@ -109,6 +109,7 @@ const char* fragmentSource = R"(
 			if (ti <= epsilon || (ti > hit.t && hit.t > 0)) continue;
 			vec3 intersect = ray.start + ray.dir * ti;
 			bool outside = false;
+			bool closeToEdge = false;
 			for (int j = 0; j < objFaces; j++) {
 				if (i == j) continue;
 				vec3 p11, n;
@@ -117,12 +118,17 @@ const char* fragmentSource = R"(
 					outside = true;
 					break;
 				}
+				if (dot(n, intersect - p11) > -0.15f && dot(n, intersect - p11) <= 0.0f) {
+					hit.mat = 0;
+					closeToEdge = true;
+				}
 			}
 			if (!outside) {
 				hit.t = ti;
 				hit.position = intersect;
 				hit.normal = normalize(normal);
-				hit.mat = mat;
+				if(!closeToEdge)
+					hit.mat = mat;
 			}
 		}
 		return hit;
@@ -132,9 +138,9 @@ const char* fragmentSource = R"(
 		Hit bestHit;
 		bestHit.t = -1;
 		//bestHit = intersectMirascope(ray, bestHit);
-		bestHit = intersectConvexPolyhedron(ray, bestHit, 0.02f, 0);
+		bestHit = intersectConvexPolyhedron(ray, bestHit, 0.06f, 2);
 		//bestHit = intersectConvexPolyhedron(ray, bestHit, 1.0f, 2);
-		bestHit = intersectConvexPolyhedron(ray, bestHit, 1.2f, 2);
+		bestHit = intersectConvexPolyhedron(ray, bestHit, 1.2f, 3);
 
 		if (dot(ray.dir, bestHit.normal) > 0) bestHit.normal = bestHit.normal * (-1);
 		return bestHit;
@@ -166,9 +172,16 @@ const char* fragmentSource = R"(
 				break;
 			}
 			//mirror reflection
-			ray.weight = ray.weight * (F0 + (vec3(1, 1, 1) - F0) * pow(dot(-ray.dir, hit.normal), 5));
-			ray.start = hit.position + hit.normal * epsilon;
-			ray.dir = reflect(ray.dir, hit.normal);
+			if (hit.mat == 2) {
+				ray.weight = ray.weight * (F0 + (vec3(1, 1, 1) - F0) * pow(dot(-ray.dir, hit.normal), 5));
+				ray.start = hit.position + hit.normal * epsilon;
+				ray.dir = reflect(ray.dir, hit.normal);
+			}
+			if (hit.mat == 3) {
+				ray.weight = ray.weight * (F0Perfect + (vec3(1, 1, 1) - F0Perfect) * pow(dot(-ray.dir, hit.normal), 5));
+				ray.start = hit.position + hit.normal * epsilon;
+				ray.dir = reflect(ray.dir, hit.normal);
+			}
 		}
 		outRadiance = outRadiance + (ray.weight * La);
 		return outRadiance;
@@ -297,6 +310,7 @@ void onInitialization() {
 	float greenFresnel = Fresnel(0.35, 2.7);
 	float blueFresnel = Fresnel(1.5, 1.9);
 	shader.setUniform(vec3(redFresnel, greenFresnel, blueFresnel), "F0");
+	shader.setUniform(vec3(1, 1, 1), "F0Perfect");
 }
 
 // Window has become invalid: Redraw
