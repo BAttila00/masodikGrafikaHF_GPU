@@ -240,7 +240,7 @@ struct Camera {
 	vec3 rvup;	//valódi függöleges irány
 	float fov = 45 * (float)M_PI / 180;
 
-	Camera() : eye(0, 1, 1), pvup(0, 0, 1), lookat(0, 0, 0) {
+	Camera() : eye(1, 0, 0), pvup(0, 0, -1), lookat(0, 0, 0) {
 		set();
 	}
 	void set() {
