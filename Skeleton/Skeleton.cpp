@@ -118,6 +118,47 @@ const char* fragmentSource = R"(
 		return hit;
 	}
 
+
+	vec3 gradiens(float a, float b, float c, vec3 position) {
+		float dx = 2 * a * position.x * exp(a * pow(position.x, 2) - c * position.z + b * pow(position.y, 2));
+		float dy = 2 * b * position.y * exp(b * pow(position.y, 2) - c * position.z + a * pow(position.x, 2));
+		float dz = -c * exp(-c * position.z + b * pow(position.y, 2) + a * pow(position.x, 2));
+		return vec3(dx, dy, dz);
+	}
+
+	Hit intersectImplicitSurface(float a, float b, float c, Ray ray, int material) {
+		//a felület implicit egyenletébe behelyettesítjük a sugár egyenletét
+		//a* (ray.start.x + ray.dir.x * t_metszes) ^ 2 + b * (ray.start.y + ray.dir.y * t_metszes) ^ 2 - c * (ray.start.z + ray.dir.z * t_metszes) = 0
+		//fenti másodfokú egyenletben t_metszes az ismeretlen (azon t idöpillanat amikor a sugár elmetszi ezen felületet)
+		//megoldani t_metszes-re, majd a kisebbik (de nagyobb nulla) t_metszes-t visszahelyettesíteni: hit.position = ray.start + ray.dir * t_metszes egyenletbe
+		//ebböl kapunk egymetszéspontot,amire meg kell nézni h belefér-e a megadott körbe -> 0,0,0 középpontú körtöl 0.3-nál kisebb távolságra van-e
+		//ha nem akkor eldobjuk, azaz hit.t = -1-et állítjuk be
+
+		Hit hit;
+		hit.t = -1;
+		float t_metszes;
+		float apar, bpar, cpar;		//a másodfokú egyenlet megoldóképletének együtthatói
+		apar = a * pow(ray.dir.x, 2) + b * pow(ray.dir.y, 2);
+		bpar = a * 2 * ray.start.x * ray.dir.x + b * 2 * ray.start.y * ray.dir.y + c * ray.dir.z;
+		cpar = a * pow(ray.start.x, 2) + b * pow(ray.start.y, 2) + c * ray.start.z;
+		float discr = bpar * bpar - 4 * apar * cpar;
+		if (discr < 0) return hit;
+		float sqrt_discr = sqrt(discr);
+		float t1 = (-bpar + sqrt_discr) / 2 / apar;
+		float t2 = (-bpar - sqrt_discr) / 2 / apar;
+		if (t1 <= 0) return hit;
+		t_metszes = (t2 > 0) ? t2 : t1;
+		vec3 position = ray.start + ray.dir * t_metszes;
+		vec3 distVector = position - vec3(0.0f, 0.0f, 0.0f);
+		float dist = length(distVector);
+		if (dist > 0.3) return hit;
+		hit.t = t_metszes;
+		hit.position = ray.start + ray.dir * hit.t;
+		hit.normal = normalize(gradiens(a, b, c, position));
+		hit.mat = material;
+		return hit;
+	}
+
 	Hit firstIntersect(Ray ray) {
 		Hit bestHit;
 		Hit tempHit;
@@ -128,7 +169,10 @@ const char* fragmentSource = R"(
 		//bestHit = intersectConvexPolyhedron(ray, bestHit, 1.0f, 2);
 		bestHit = intersectConvexPolyhedron(ray, bestHit, 1.2f, 3);
 
-		tempHit = intersectSphere(0.2f, vec3(0.0f, 0.0f, 0.0f), ray, 2);
+		//tempHit = intersectSphere(0.2f, vec3(0.0f, 0.0f, 0.0f), ray, 2);
+		//if (tempHit.t > 0.0f && (bestHit.t < 0.0f || tempHit.t < bestHit.t))  bestHit = tempHit;
+
+		tempHit = intersectImplicitSurface(10.5f, 10.5f, 1.5f, ray, 2);
 		if (tempHit.t > 0.0f && (bestHit.t < 0.0f || tempHit.t < bestHit.t))  bestHit = tempHit;
 
 		if (dot(ray.dir, bestHit.normal) > 0) bestHit.normal = bestHit.normal * (-1);
