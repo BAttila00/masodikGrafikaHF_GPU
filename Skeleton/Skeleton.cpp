@@ -48,7 +48,6 @@ const char* fragmentSource = R"(
 
 	const int objFaces = 12;
 
-	uniform int top;
 	uniform vec3 wEye;
 	uniform vec3 v[20];
 	uniform int planes[objFaces * 3];
@@ -169,8 +168,8 @@ const char* fragmentSource = R"(
 		//bestHit = intersectConvexPolyhedron(ray, bestHit, 1.0f, 2);
 		bestHit = intersectConvexPolyhedron(ray, bestHit, 1.2f, 3);
 
-		//tempHit = intersectSphere(0.2f, vec3(0.0f, 0.0f, 0.0f), ray, 2);
-		//if (tempHit.t > 0.0f && (bestHit.t < 0.0f || tempHit.t < bestHit.t))  bestHit = tempHit;
+		tempHit = intersectSphere(0.2f, vec3(-0.5f, 0.0f, 0.0f), ray, 2);
+		if (tempHit.t > 0.0f && (bestHit.t < 0.0f || tempHit.t < bestHit.t))  bestHit = tempHit;
 
 		tempHit = intersectImplicitSurface(10.5f, 10.5f, 1.5f, ray, 2);
 		if (tempHit.t > 0.0f && (bestHit.t < 0.0f || tempHit.t < bestHit.t))  bestHit = tempHit;
@@ -299,7 +298,6 @@ void onInitialization() {
 
 	// create program for the GPU
 	shader.create(vertexSource, fragmentSource, "fragmentColor");
-	shader.setUniform(1, "top");
 
 	const float g = 0.618f;
 	const float G = 1.618f;
