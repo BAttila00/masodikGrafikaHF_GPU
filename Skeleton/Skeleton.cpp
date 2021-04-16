@@ -43,7 +43,8 @@ const char* fragmentSource = R"(
 	};
 
 	struct Ray {
-		vec3 start, dir, weight;
+		vec3 start, dir;
+		vec3 weight;	//GLSL-ben nem használhatunk rekurzióz, így ciklust használunk a trace-ben és a sugársürüséget ezzel súlyozzuk
 	};
 
 	const int objFaces = 12;
